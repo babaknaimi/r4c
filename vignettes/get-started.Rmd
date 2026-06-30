@@ -1,0 +1,233 @@
+---
+title: "Getting Started with r4c"
+author: "r4c package"
+date: "2026-06-30"
+output:
+  rmarkdown::html_vignette:
+    toc: true
+vignette: >
+  %\VignetteIndexEntry{Getting Started with r4c}
+  %\VignetteEngine{knitr::rmarkdown}
+  %\VignetteEncoding{UTF-8}
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(
+  collapse = TRUE,
+  comment = "#>",
+  fig.width = 7,
+  fig.height = 4.5
+)
+library(r4c)
+library(ggplot2)
+```
+
+# Overview
+
+`r4c` supports two operational rangeland tasks:
+
+1. Classifying range condition from six-factor field sheets.
+2. Estimating dry fodder production and livestock units from cutting and weighing
+   (CW), comparative yield (CY), and double sampling (DS) data.
+
+The package accepts Excel workbooks and plain R data frames. The included
+example workbook is available after installation:
+
+```{r example-path}
+path <- system.file("extdata", "r4c_data.xlsx", package = "r4c")
+basename(path)
+```
+
+# Installation
+
+Install from GitHub:
+
+```r
+install.packages("remotes")
+remotes::install_github("babaknaimi/r4c")
+```
+
+For a local checkout, run:
+
+```r
+install.packages("devtools")
+devtools::install(".")
+```
+
+Then load the package:
+
+```{r load-package, eval=FALSE}
+library(r4c)
+```
+
+# Excel Workbook Structure
+
+The example workbook uses these sheets:
+
+```{r sheets}
+readxl::excel_sheets(path)
+```
+
+The range-condition sheets use the field-template structure:
+
+- `SP`: species or special row label.
+- `PC`: palatability class for species rows.
+- `C1`, `C2`, ...: canopy or cover measurements.
+- `S1`, `S2`, ...: seedling or supplementary observations.
+- Special rows: `LFP`, `SGP`, `TCP`, and `BSP`.
+
+The production sheets are:
+
+- `cyd`: comparative-yield calibration data with `Xri`, `Ygi`, and `Ydi`.
+- `dsd`: double-sampling calibration data with `Xej`, `Ygj`, and `Ydj`.
+- `re_cwd`: field data with CW observations and CY/DS predictor columns.
+
+# Range Condition
+
+In the example workbook, `sfd1` and `sfd2` are treated as two consecutive years.
+The helper below reads the field-template layout, separates `PC` from the cover
+columns, and classifies each year.
+
+```{r condition}
+condition <- classify_sf_template_years(
+  path,
+  sheets = c("sfd1", "sfd2"),
+  year_names = c("Year 1", "Year 2"),
+  score_profile = "template_rank"
+)
+
+condition$summary
+```
+
+The template-rank profile is intentionally explicit. The attached materials did
+not include the official six-factor scoring table, so `r4c` exposes the default
+profile through `score_max`, `count_reference`, and `rank_fun`. Replace those
+arguments if your agency uses a different official rubric.
+
+```{r condition-factors}
+condition$details[["Year 1"]]$factor_scores
+```
+
+```{r condition-plot}
+ggplot(condition$summary, aes(year, total_score, group = 1)) +
+  geom_line(linewidth = 0.8, color = "#2E74B5") +
+  geom_point(size = 3, color = "#1F4D78") +
+  geom_hline(yintercept = 50, linetype = 2, color = "gray50") +
+  labs(
+    x = NULL,
+    y = "Total rank",
+    title = "Range condition trend"
+  ) +
+  theme_minimal()
+```
+
+# Fodder Production and Livestock Units
+
+Use `estimate_fodder_production()` when you want CW, CY, and DS summarized from
+the `re_cwd` sheet. The default livestock-unit calculation uses:
+
+- allowable use: 0.60
+- range area: 700 ha
+- animal-unit weight: 60 kg
+- daily intake: 2% of body weight
+- grazing period: 6 months
+- days per month: 30
+
+```{r production}
+production <- estimate_fodder_production(path)
+
+production_summary <- production$summary
+production_summary$dry_fodder_kg_ha <- round(production_summary$dry_fodder_kg_ha, 1)
+production_summary$total_available_fodder_kg <- round(production_summary$total_available_fodder_kg, 1)
+production_summary$livestock_units <- round(production_summary$livestock_units)
+production_summary
+```
+
+For this workbook, the livestock-unit checks round to 1516, 1502, and 1577 for
+CW, CY, and DS. The continuous CY regression gives 772.5 kg/ha. A legacy
+spreadsheet that rounds intermediate CY predictions can display about 773.1
+kg/ha, so confirm which convention your organization wants before locking a
+reporting template.
+
+```{r production-plot}
+ggplot(production_summary, aes(method, dry_fodder_kg_ha, fill = method)) +
+  geom_col(width = 0.65, alpha = 0.85) +
+  geom_text(aes(label = dry_fodder_kg_ha), vjust = -0.4) +
+  labs(
+    x = NULL,
+    y = "Dry fodder production (kg/ha)",
+    title = "CW, CY, and DS dry fodder production"
+  ) +
+  theme_minimal() +
+  theme(legend.position = "none")
+```
+
+# Optional Validation
+
+CW is not required for routine CY or DS estimation, but it is useful for method
+comparison. Use `validate_methods()` to build a statistical comparison and
+`plot_validation()` for diagnostic plots.
+
+```{r validation}
+cyd <- read_cyd_excel(path)
+dsd <- read_dsd_excel(path)
+cwd <- read_cwd_excel(path)
+
+cc <- carrying_capacity(cyd, dsd)
+validation <- validate_methods(cwd, cc, test = "kruskal")
+validation
+```
+
+```{r validation-boxplot}
+plot_validation(validation, type = "boxplot")
+```
+
+```{r validation-agreement}
+plot_validation(validation, type = "agreement")
+```
+
+# Working with Your Own Data
+
+Use a workbook with the same sheet names:
+
+```r
+my_path <- "path/to/my_r4c_workbook.xlsx"
+
+classify_sf_template_years(
+  my_path,
+  sheets = c("sfd1", "sfd2"),
+  year_names = c("Year 1", "Year 2"),
+  score_profile = "template_rank"
+)
+
+estimate_fodder_production(
+  my_path,
+  allowable_use = 0.60,
+  range_area_ha = 700,
+  au_weight_kg = 60,
+  grazing_months = 6
+)
+```
+
+For data already loaded into R, pass data frames directly:
+
+```r
+cyd <- read_cyd_excel(my_path)
+dsd <- read_dsd_excel(my_path)
+cwd <- read_cwd_excel(my_path)
+
+estimate_fodder_production(cyd, dsd, cwd)
+```
+
+# Reporting Checklist
+
+Before reporting results, check:
+
+1. The SF sheets represent the intended unit: replicated sheets for one year
+   should be merged; sheets from different years should be classified separately.
+2. The `PC` palatability classes match the local field guide.
+3. The six-factor scoring profile matches your official rubric.
+4. The production parameters match the management question: area, allowable use,
+   animal-unit weight, grazing months, and daily intake.
+5. CY/DS validation is only interpreted when the CW comparison data are relevant
+   and collected under the same field conditions.

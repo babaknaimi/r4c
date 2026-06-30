@@ -22,6 +22,13 @@ print.r4c_capacity_result <- function(x, ...) {
 }
 
 #' @export
+print.r4c_production_result <- function(x, ...) {
+  cat("<r4c_production_result>\n")
+  print(x$summary, row.names = FALSE)
+  invisible(x)
+}
+
+#' @export
 print.r4c_validation_result <- function(x, ...) {
   cat("<r4c_validation_result>\n")
   print(x$test)

@@ -1,10 +1,8 @@
 Package: r4c
 Title: Range Condition Classification and Carrying Capacity Tools
-Version: 0.1-1
-Author: Mansour Mesdaghi [aut, cre]
-Maintainer: Mansour Mesdaghi <mmesdagh@yahoo.com>
-Authors@R:
-    person("Mansour", "Mesdaghi", email = "mmesdagh@yahoo.com", role = c("aut", "cre"))
+Version: 1.0-1
+Authors@R: 
+    c(person("Mansour", "Mesdaghi", email = "mmesdagh@yahoo.com", role = c("aut", "cre")),person(given = "Babak", family = "Naimi", role = c("aut"), email = "b.naimi@gmail.com"))
 Description: Tools for range condition classification using a six-factor scoring
     workflow and for carrying capacity estimation using comparative yield and
     double sampling methods. The package accepts either Excel workbooks or
@@ -13,11 +11,10 @@ License: GPL (>= 3)
 Encoding: UTF-8
 Roxygen: list(markdown = TRUE)
 RoxygenNote: 7.3.2
-Depends:
-    R (>= 4.1.0)
-Imports:
-    ggplot2,
-    readxl
-Suggests:
-    testthat (>= 3.0.0)
+Depends: R (>= 4.1.0)
+Imports: ggplot2, readxl
+Suggests: knitr, rmarkdown, testthat (>= 3.0.0)
+VignetteBuilder: knitr
 Config/testthat/edition: 3
+NeedsCompilation: no
+Packaged: 2026-04-06 15:52:02 UTC; naimi001

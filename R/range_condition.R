@@ -142,8 +142,8 @@ classify_range_condition_years <- function(x, palatability, sheet_groups = NULL,
 
   summary <- data.frame(
     year = names(details),
-    total_score = vapply(details, function(res) res$total_score, numeric(1)),
-    condition_class = vapply(details, function(res) res$condition_class, character(1)),
+    total_score = unname(vapply(details, function(res) res$total_score, numeric(1))),
+    condition_class = unname(vapply(details, function(res) res$condition_class, character(1))),
     stringsAsFactors = FALSE
   )
 
